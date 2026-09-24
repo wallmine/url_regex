@@ -10,6 +10,34 @@ describe UrlRegex do
       expect { UrlRegex.get(mode: nil) }.to raise_error ArgumentError
       expect { UrlRegex.get(mode: :hahaha) }.to raise_error ArgumentError
     end
+
+it 'should return the same compiled regex for the same arguments' do
+  expect(UrlRegex.get).to equal UrlRegex.get
+  expect(UrlRegex.get(scheme_required: false, mode: :parsing)).to equal UrlRegex.get(scheme_required: false, mode: :parsing)
+  expect(UrlRegex.get).not_to equal UrlRegex.get(scheme_required: false)
+end
+  end
+
+  describe 'Long inputs' do
+    long_inputs = {
+      'a long run of hostname characters' => 'a' * 20_000 + '!',
+      'a long run of hyphenated labels' => 'a-' * 10_000 + '!',
+      'a long run of colons' => 'a:' * 10_000 + '!',
+      'a long run of at signs' => 'a@' * 10_000 + '!'
+    }
+
+    # The parsing regex is unanchored, so it retries every start position and stays quadratic on such input.
+    [[true, :validation], [false, :validation], [true, :javascript], [false, :javascript]].each do |scheme_required, mode|
+      long_inputs.each do |description, input|
+        it "should reject #{description} in linear time (scheme_required: #{scheme_required}, mode: #{mode})" do
+          regex = UrlRegex.get(scheme_required: scheme_required, mode: mode)
+          input = "http://#{input}" if scheme_required
+          started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          expect(regex.match(input)).to be_nil
+          expect(Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at).to be < 0.1
+        end
+      end
+    end
   end
 
   describe 'Full validation regex' do
