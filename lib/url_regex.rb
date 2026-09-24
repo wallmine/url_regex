@@ -12,6 +12,10 @@ module UrlRegex
   def self.get(scheme_required: true, mode: :validation)
     raise ArgumentError, "wrong mode: #{mode}" if MODES.index(mode).nil?
 
+    REGEXES[[scheme_required, mode]] ||= build(scheme_required, mode)
+  end
+
+  def self.build(scheme_required, mode)
     scheme = scheme_required ? PROTOCOL_IDENTIFIER : PROTOCOL_IDENTIFIER_OPTIONAL
 
     case mode
@@ -26,7 +30,7 @@ module UrlRegex
 
   BASE = '
   # user:pass authentication
-  (?:\S+(?::\S*)?@)?
+  (?:\S+@)?
 
   (?:
     # IP address exclusion
@@ -60,9 +64,9 @@ module UrlRegex
 
     |
     # host name
-    (?:(?:[a-z\u00a1-\uffff0-9][-_]*)*[a-z\u00a1-\uffff0-9]+)
+    (?:[a-z\u00a1-\uffff0-9]+(?:[-_]+[a-z\u00a1-\uffff0-9]+)*)
     # domain name
-    (?:\.(?:[a-z\u00a1-\uffff0-9][-_]*)*[a-z\u00a1-\uffff0-9]+)*
+    (?:\.[a-z\u00a1-\uffff0-9]+(?:[-_]+[a-z\u00a1-\uffff0-9]+)*)*
     # TLD identifier
     (?:\.(?:[a-z\u00a1-\uffff]{2,}))
     # TLD may end with dot
@@ -77,16 +81,18 @@ module UrlRegex
 '.freeze
 
   JAVASCRIPT_BASE = '
-    (?:\S+(?::\S*)?@)?
+    (?:\S+@)?
     (?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})
     (?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])
     (?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|
-    (?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*
+    (?:[a-z\u00a1-\uffff0-9]+(?:-+[a-z\u00a1-\uffff0-9]+)*)(?:\.[a-z\u00a1-\uffff0-9]+(?:-+[a-z\u00a1-\uffff0-9]+)*)*
     (?:\.(?:[a-z\u00a1-\uffff]{2,}))\.?)(?::\d{2,5})?(?:[/?#]\S*)?'.gsub(/\s+/, '').freeze
 
   PROTOCOL_IDENTIFIER = '(?:(?:https?|ftp)://)'.freeze
   PROTOCOL_IDENTIFIER_OPTIONAL = '(?:(?:https?|ftp)://)?'.freeze
   MODES = [:validation, :parsing, :javascript].freeze
+  REGEXES = {}
 
-  private_constant :BASE, :PROTOCOL_IDENTIFIER, :PROTOCOL_IDENTIFIER_OPTIONAL, :MODES
+  private_constant :BASE, :PROTOCOL_IDENTIFIER, :PROTOCOL_IDENTIFIER_OPTIONAL, :MODES, :REGEXES
+  private_class_method :build
 end
